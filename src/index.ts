@@ -5,6 +5,8 @@ import { jwt } from '@elysiajs/jwt';
 import { healthController } from './controllers/health.controller';
 import { protectedController } from './controllers/protected.controller';
 import { authController } from './controllers/auth.controller';
+import { qrController } from './controllers/qr.controller';
+import { cryptoController } from './controllers/crypto.controller';
 
 const app = new Elysia()
   .use(cors())
@@ -17,7 +19,7 @@ const app = new Elysia()
   .use(swagger({
     documentation: {
       info: {
-        title: 'Elysia Boilerplate API',
+        title: 'Elysia TNXTO API',
         version: '1.0.0'
       },
       components: {
@@ -31,9 +33,12 @@ const app = new Elysia()
       }
     }
   }))
-  .use(healthController)
-  .use(authController)
-  .use(protectedController)
+  .group('/api', (app) => app
+    .use(authController)
+    // .use(protectedController)
+    .use(qrController)
+    .use(cryptoController)
+    .use(healthController))
   .listen(3000);
 
 console.log(
