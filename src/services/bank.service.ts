@@ -1,39 +1,12 @@
 import { BaseService } from './base.service';
 import QRCode from 'qrcode';
-import { generate } from "promptparse";
 import { formateSecureString } from '../utils/date.util';
+import { scanQrCodeFromBuffer } from '../utils/qr.util';
+import { generate, parse, validate } from 'promptparse';
 
 export class BankService extends BaseService {
     constructor() {
         super('BankService');
-    }
-
-    async getAccountBalance(accountId: string) {
-        try {
-            this.log(`Fetching balance for account: ${accountId}`);
-
-            // Simulate DB call
-            const balance = {
-                accountId,
-                amount: 1000.00,
-                currency: 'THB',
-                updatedAt: new Date()
-            };
-
-            return balance;
-        } catch (error) {
-            this.handleError('Failed to get account balance', error);
-        }
-    }
-
-    async transfer(fromId: string, toId: string, amount: number) {
-        try {
-            this.log(`Transferring ${amount} from ${fromId} to ${toId}`);
-            // Logic here
-            return { success: true, transactionId: 'txn_123' };
-        } catch (error) {
-            this.handleError('Transfer failed', error);
-        }
     }
 
     /**
@@ -52,46 +25,91 @@ export class BankService extends BaseService {
                 amount,
             });
 
-            return {
+            return this.successResponse({
                 type,
                 target: formateSecureString(target),
                 amount,
                 payload,
                 qrCode: await QRCode.toDataURL(payload)
-            };
+            }, "QR Code generated successfully");
 
         } catch (error) {
-            this.handleError('Failed to generate QR Code', error);
+            return this.responseError("Failed to generate QR Code", 400, error);
         }
     }
 
     /**
-     * Verify Bank Slip (Mock)
-     * @param slipData Data from scanned slip or uploaded file
+     * Verify Slip from Image
+     * @param file Image file
+     * @param amount Expected amount (optional)
      */
-    async verifySlip(slipData: any) {
+    async verifySlipImage(file: Blob) {
         try {
-            this.log('Verifying slip', slipData);
+            const buffer = Buffer.from(await file.arrayBuffer());
 
-            // In a real app, you would call a 3rd party API (like Open Bank API) here
-            // For demo, we simulate a valid response if amount > 0
-
-            const isValid = slipData?.amount > 0;
-
-            if (!isValid) {
-                throw new Error('Invalid slip amount');
+            // Check if buffer is valid
+            if (!buffer || buffer.length === 0) {
+                return this.responseError("Invalid image file", 400, Error("Invalid image file"));
             }
 
-            return {
-                isValid: true,
-                sender: { name: 'John Doe', bank: 'SCB' },
-                receiver: { name: 'Shop TNXTO', bank: 'KBANK' },
-                amount: slipData.amount || 100,
-                transRef: `REF${Date.now()}`,
-                timestamp: new Date()
-            };
+            const qrData = await scanQrCodeFromBuffer(buffer);
+            if (!qrData) {
+                return this.responseError("No QR code found or unable to decode data", 400, Error("No QR code found or unable to decode data"));
+            }
+
+            this.log(`QR Data: ${qrData}`);
+
+            // Check if it is a Payment QR (PromptPay)
+            if (qrData.startsWith('000201')) {
+                return this.responseError("This is a Payment QR (PromptPay), not a Bank Transfer Slip.", 400, Error("Detected Payment QR instead of Slip QR"));
+            }
+
+            // @ts-ignore
+            const slipData = validate.slipVerify(qrData);
+            if (!slipData) {
+                return this.responseError("The QR code is not a valid Bank Slip.", 400, Error("Invalid slip verify QR payload"));
+            }
+
+            const { sendingBank, transRef } = slipData;
+
+            this.log(`Slip Data: ${JSON.stringify(slipData)}`);
+
+            // External API verification (SlipOK)
+            let res: any = {};
+            const slipOkUrl = process.env.SLIPOK_URL;
+            const slipOkKey = process.env.SLIPOK_API_KEY;
+
+            if (!slipOkUrl || !slipOkKey) {
+                return this.responseError("SlipOK URL or API key not found", 400, Error("SlipOK URL or API key not found"));
+            }
+
+            try {
+                const response = await fetch(slipOkUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-authorization": slipOkKey
+                    },
+                    body: JSON.stringify({
+                        data: qrData
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    this.handleError("SlipOK API Error", Error(`${errorText}`));
+                }
+                res = await response.json();
+            } catch (error) {
+                return this.responseError("Error calling slip verification API", 400, error);
+            }
+
+            // Unwrap the response from SlipOK if it's nested in a 'data' property
+            const responseData = res.data ? res.data : res;
+            return this.successResponse(responseData, "Slip verification successful");
+
         } catch (error) {
-            this.handleError('Slip verification failed', error);
+            return this.responseError("Slip image verification failed", 400, error);
         }
     }
 }
