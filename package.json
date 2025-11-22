@@ -10,9 +10,13 @@
     "@elysiajs/cors": "latest",
     "@elysiajs/jwt": "^1.4.0",
     "@elysiajs/swagger": "latest",
-    "elysia": "^1.4.16"
+    "elysia": "^1.4.16",
+    "promptparse": "^1.4.0",
+    "promptpay-qr": "^0.5.0",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "@types/qrcode": "^1.5.6",
     "bun-types": "latest"
   },
   "module": "src/index.ts"
