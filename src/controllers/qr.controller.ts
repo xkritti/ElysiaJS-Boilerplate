@@ -28,12 +28,28 @@ export const qrController = new Elysia({ prefix: '/qr' })
       security: [{ BearerAuth: [] }]
     }
   })
-  .post('/verify', async ({ body }) => {
-    return await bankService.verifySlip(body);
+
+  .post('/verify', async ({ body, query }) => {
+    // Extract title and image from form data
+    const imageFiles = body.image;
+
+    if (!imageFiles || imageFiles.length === 0) {
+      return { error: "No image file provided" };
+    }
+
+    // Convert file to buffer
+    const file = imageFiles[0];
+
+    if (!file.type.startsWith('image/')) {
+      throw new Error("File must be an image");
+    }
+    return await bankService.verifySlipImage(file);
   }, {
     body: t.Object({
-      amount: t.Numeric(),
-      transRef: t.Optional(t.String())
+      image: t.Files({ description: "Slip Image", format: 'image/*' }),
+    }),
+    query: t.Object({
+      amount: t.Optional(t.Numeric())
     }),
     isAuth: true,
     detail: {
