@@ -1,11 +1,4 @@
-export interface ApiResponse<T = any> {
-    success: boolean;
-    code: number;
-    message: string;
-    data?: T;
-    error?: any;
-    timestamp: string;
-}
+import { ApiResponse } from '../types/response.type';
 
 export class BaseService {
     constructor(protected readonly serviceName: string = 'BaseService') { }

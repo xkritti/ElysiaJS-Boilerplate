@@ -3,7 +3,7 @@ import { swagger } from '@elysiajs/swagger';
 import { cors } from '@elysiajs/cors';
 import { jwt } from '@elysiajs/jwt';
 import { healthController } from './controllers/health.controller';
-import { protectedController } from './controllers/protected.controller';
+// import { protectedController } from './controllers/protected.controller';
 import { authController } from './controllers/auth.controller';
 import { qrController } from './controllers/qr.controller';
 import { cryptoController } from './controllers/crypto.controller';

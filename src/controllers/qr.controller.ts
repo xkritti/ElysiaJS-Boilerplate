@@ -1,6 +1,7 @@
 import { Elysia, t } from 'elysia';
 import { authGuard } from '../guards/auth.guard';
 import { BankService } from '../services/bank.service';
+import { GenerateQrModel, VerifySlipBodyModel, VerifySlipQueryModel } from '../models/qr.model';
 
 const bankService = new BankService();
 
@@ -10,17 +11,7 @@ export const qrController = new Elysia({ prefix: '/qr' })
     const { amount, target, type } = query;
     return await bankService.generateQr(amount, target, type);
   }, {
-    query: t.Object({
-      amount: t.Numeric(),
-      target: t.String(),
-      type: t.Enum({
-        MSISDN: 'MSISDN',
-        NATID: 'NATID',
-        EWALLETID: 'EWALLETID',
-        // Reserved for future use
-        // BANKACC: 'BANKACC'
-      })
-    }),
+    query: GenerateQrModel,
     isAuth: true,
     detail: {
       summary: 'Generate PromptPay QR',
@@ -45,12 +36,8 @@ export const qrController = new Elysia({ prefix: '/qr' })
     }
     return await bankService.verifySlipImage(file);
   }, {
-    body: t.Object({
-      image: t.Files({ description: "Slip Image", format: 'image/*' }),
-    }),
-    query: t.Object({
-      amount: t.Optional(t.Numeric())
-    }),
+    body: VerifySlipBodyModel,
+    query: VerifySlipQueryModel,
     isAuth: true,
     detail: {
       summary: 'Verify Slip',
