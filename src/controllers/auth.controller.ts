@@ -1,25 +1,24 @@
 import { Elysia, t } from 'elysia';
-import { jwt } from '@elysiajs/jwt';
+import { jwtConfig } from '../config/jwt.config';
+import { fail } from '../utils/response.util';
 
 export const authController = new Elysia({ prefix: '/auth' })
-    .use(
-        jwt({
-            name: 'jwt',
-            secret: process.env.JWT_SECRET || 'super-secret-key'
-        })
-    )
+    .use(jwtConfig)
     .post(
         '/login',
-        async ({ body, jwt }) => {
+        async ({ body, jwt, set }) => {
             // Mock login check
             if (body.username === 'admin' && body.password === 'password') {
                 const token = await jwt.sign({
                     username: body.username,
                     role: 'admin'
                 });
-                return { success: true, token };
+                return token;
             }
-            return { success: false, message: 'Invalid credentials' };
+
+            // Business Logic Failure: Invalid Credentials
+            set.status = 401;
+            return fail('Invalid credentials', 401);
         },
         {
             body: t.Object({

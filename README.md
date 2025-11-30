@@ -50,6 +50,40 @@ src/
 4. **Documentation**
    Visit `http://localhost:3000/swagger` to view the interactive API documentation.
 
+### Standardized Response Handling
+
+This boilerplate includes a global middleware that automatically standardizes all API responses.
+
+**Success Response:**
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Success",
+  "data": { ... },
+  "timestamp": "2023-11-30T..."
+}
+```
+
+**Error Response:**
+```json
+{
+  "success": false,
+  "statusCode": 400,
+  "message": "Error Message",
+  "error": { ...details... },
+  "timestamp": "2023-11-30T..."
+}
+```
+
+**How to use:**
+- **Success**: Just return your data object. The middleware wraps it automatically.
+- **Custom Success**: Use `return success(data, 201, 'Created')`.
+- **Business Logic Failure**: Use `return fail('Invalid Input', 400)`.
+- **System Error**: Use `throw new AppError('Critical Error', 500)`.
+
+See [docs/RESPONSE_HANDLING.md](docs/RESPONSE_HANDLING.md) for more details.
+
 ### Usage Examples
 
 #### Creating a New Route
@@ -66,11 +100,13 @@ Then register it in `src/index.ts`.
 1. **Login** to get a token:
    POST `/auth/login` with body `{ "username": "admin", "password": "password" }`
 2. **Protect a Route**:
-   Use the `.use(authGuard)` and `{ isAuth: true }`:
+   Use the `.use(authGuard)` middleware:
    ```typescript
-   import { protectedController } from './controllers/protected.controller';
-   // ...
-   app.use(protectedController);
+   import { authGuard } from '../guards/auth.guard';
+   
+   export const protectedController = new Elysia({ prefix: '/protected' })
+     .use(authGuard) // Protects all routes below
+     .get('/', () => ({ message: 'Access Granted' }));
    ```
    Test with header: `Authorization: Bearer <your-token>`
 
@@ -85,6 +121,7 @@ Boilerplate สำหรับสร้าง API ด้วย [ElysiaJS](https:
 - **โครงสร้างแบบแยกส่วน**: จัดเก็บไฟล์แยกตามหน้าที่ (Controllers, Services, Models)
 - **Type Safety**: รองรับ TypeScript เต็มรูปแบบ ปลอดภัยตั้งแต่ต้นจนจบ
 - **ระบบยืนยันตัวตน**: รองรับ JWT Authentication (Bearer Token)
+- **Standardized Response**: ระบบจัดการ Response และ Error แบบมาตรฐานเดียวกันทั้งโปรเจค
 - **เอกสาร API**: สร้าง Swagger UI ให้โดยอัตโนมัติ
 - **CORS**: ตั้งค่า CORS มาให้พร้อมใช้งาน
 - **Health Check**: มี Endpoint สำหรับตรวจสอบสถานะ Server
@@ -96,6 +133,7 @@ src/
 ├── services/       # ส่วนประมวลผล Logic ทางธุรกิจ
 ├── models/         # โครงสร้างข้อมูล (DTOs/Schemas)
 ├── guards/         # Middleware สำหรับตรวจสอบสิทธิ์
+├── middlewares/    # Global Middleware (Response, Error Handling)
 ├── plugins/        # ปลั๊กอินเสริมต่างๆ
 ├── utils/          # ฟังก์ชันช่วยเหลือทั่วไป
 ├── types/          # Type Definitions ที่ใช้ร่วมกัน
@@ -122,6 +160,40 @@ src/
 4. **ดูเอกสาร API**
    เข้าไปที่ `http://localhost:3000/swagger` เพื่อดูและทดสอบ API
 
+### ระบบจัดการ Response (Standardized Response)
+
+โปรเจคนี้มี Middleware ที่ช่วยจัดการรูปแบบการตอบกลับให้เป็นมาตรฐานเดียวกันโดยอัตโนมัติ
+
+**รูปแบบเมื่อสำเร็จ (Success):**
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Success",
+  "data": { ... },
+  "timestamp": "2023-11-30T..."
+}
+```
+
+**รูปแบบเมื่อเกิดข้อผิดพลาด (Error):**
+```json
+{
+  "success": false,
+  "statusCode": 400,
+  "message": "Error Message",
+  "error": { ...details... },
+  "timestamp": "2023-11-30T..."
+}
+```
+
+**วิธีใช้งาน:**
+- **กรณีปกติ**: `return` ข้อมูลออกไปได้เลย ระบบจะห่อให้อัตโนมัติ
+- **กำหนด Message เอง**: ใช้ `return success(data, 201, 'Created')`
+- **Business Logic ไม่ผ่าน**: ใช้ `return fail('ข้อมูลไม่ถูกต้อง', 400)`
+- **System Error**: ใช้ `throw new AppError('Database Error', 500)`
+
+ดูรายละเอียดเพิ่มเติมได้ที่ [docs/RESPONSE_HANDLING.md](docs/RESPONSE_HANDLING.md)
+
 ### ตัวอย่างการใช้งาน
 
 #### การสร้าง Route ใหม่
@@ -138,10 +210,12 @@ export const userController = new Elysia({ prefix: '/users' })
 1. **Login** เพื่อขอ Token:
    POST `/auth/login` ส่ง body `{ "username": "admin", "password": "password" }`
 2. **การป้องกัน Route**:
-   ใช้ `.use(authGuard)` และ `{ isAuth: true }`:
+   ใช้ `.use(authGuard)`:
    ```typescript
-   import { protectedController } from './controllers/protected.controller';
-   // ...
-   app.use(protectedController);
+   import { authGuard } from '../guards/auth.guard';
+   
+   export const protectedController = new Elysia({ prefix: '/protected' })
+     .use(authGuard) // ป้องกันทุก Route ด้านล่างนี้
+     .get('/', () => ({ message: 'เข้าถึงข้อมูลได้' }));
    ```
    ทดสอบโดยการส่ง Header: `Authorization: Bearer <your-token>`
