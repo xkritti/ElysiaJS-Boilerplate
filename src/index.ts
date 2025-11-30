@@ -1,19 +1,17 @@
 import { Elysia } from 'elysia';
 import { swagger } from '@elysiajs/swagger';
 import { cors } from '@elysiajs/cors';
-import { jwt } from '@elysiajs/jwt';
+import { jwtConfig } from './config/jwt.config';
+import { responseMiddleware } from './middlewares/response.middleware';
 import { healthController } from './controllers/health.controller';
 import { protectedController } from './controllers/protected.controller';
 import { authController } from './controllers/auth.controller';
 
+import { demoController } from './controllers/demo.controller';
+
 const app = new Elysia()
   .use(cors())
-  .use(
-    jwt({
-      name: 'jwt',
-      secret: process.env.JWT_SECRET || 'super-secret-key'
-    })
-  )
+  .use(jwtConfig)
   .use(swagger({
     documentation: {
       info: {
@@ -31,9 +29,12 @@ const app = new Elysia()
       }
     }
   }))
-  .use(healthController)
-  .use(authController)
-  .use(protectedController)
+  .use(responseMiddleware)
+  .group('/api', (app) => app
+    .use(authController)
+    .use(protectedController)
+    .use(demoController)
+    .use(healthController))
   .listen(3000);
 
 console.log(
